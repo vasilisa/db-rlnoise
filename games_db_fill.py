@@ -1,15 +1,5 @@
 '''
- Script to fill in the particpants_blocks table in the rlnoise_db 
- The columns of the table: 
- 	participant_id           = Column(BigInteger, nullable=False)
-    blocks_numbers           = Column(VARCHAR(length=100), nullable=False)
-    blocks_feedback          = Column(VARCHAR(length=100), nullable=False)
-    training_blocks_feedback = Column(VARCHAR(length=100), nullable=False)
-    shape_1                  = Column(VARCHAR(length=100), nullable=False) 
-    shape_2                  = Column(VARCHAR(length=100), nullable=False)
-    color_1                  = Column(VARCHAR(length=100), nullable=False)
-    color_2                  = Column(VARCHAR(length=100), nullable=False)
-
+ Script to fill the Games DB 
 '''
 
 # Connect to the DB 
@@ -41,7 +31,7 @@ table  = db.Table('games', metadata, autoload=True, autoload_with=engine)
 #Inserting many records at ones
 query  = db.insert(table) 
 
-path   = os.path.join("/Users/vasilisaskvortsova/Documents/TASKVOL_ONLINE/task/prerequisites/expe_matlab/Data/")
+path   = os.path.join("./expe_matlab/Data/")
 os.chdir(path)
 
 # Fill in the dictionnary to be put in the DB later 
