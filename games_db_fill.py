@@ -22,7 +22,7 @@ connection = engine.connect()
 engine.table_names()
 
 nbOfBlocks = 6 # 2 training blocks and 4 test blocks 
-n_game     = 30 
+n_game     = 100 
 game_ids   = np.arange(1,n_game+1) 
 
 
@@ -31,8 +31,7 @@ table  = db.Table('games', metadata, autoload=True, autoload_with=engine)
 #Inserting many records at ones
 query  = db.insert(table) 
 
-path   = os.path.join("./expe_matlab/Data/")
-os.chdir(path)
+path   = os.path.join("./expe_matlab/Data_tausamp_2_truncated/")
 
 # Fill in the dictionnary to be put in the DB later 
 
