@@ -38,6 +38,12 @@ end
 if ~isfield(cfg,'ntrl')
     cfg.ntrl = []; % default: no constraint on number of trials
 end
+
+if ~isfield(cfg,'realntrl')
+    cfg.realntrl = []; % default: no constraint on number of trials
+end
+
+
 if ~isfield(cfg,'fscal')
     cfg.fscal = []; % default: estimate scaling factor on-the-fly
 end
@@ -191,8 +197,27 @@ else
                 break
             end
         end
+    end % while 
+end % anticor
+
+
+% The number of generated trials is bigger than the number of trials
+% requested: select the number the good number of trials by cutting N-first trials of the sequence, check that the number of reversals is OK 
+
+while true
+    ncut  = randi([8 20],1); % a number of trials between 8 and 20 to discard, sampled from a uniform.  
+    pp_n  = pp(ncut:(ncut+realntrl-1)); 
+    qq_n  = qq(ncut:(ncut+realntrl-1)); 
+    nrev  = get_reversal(pp_n,qq_n);
+    sprintf('Number of reversals %0.d',nrev);
+
+    if nrev > 2
+        break
     end
 end
+
+pp = pp_n; 
+qq = qq_n; 
 
 % sample bandits
 fprintf('sampling bandits...\n');
@@ -201,15 +226,15 @@ ps_all = get_pr(repmat(pp,[ngen,1]),tau_samp);
 qs_all = get_pr(repmat(qq,[ngen,1]),tau_samp);
 % simulate reference model
 alpha = 0.5; % reference learning rate (do not change!)
-qval = zeros(ngen,ntrl);
-resp = zeros(ngen,ntrl);
-vabs = zeros(ngen,ntrl); % absolute chosen value
-vrel = zeros(ngen,ntrl); % relative chosen value
+qval = zeros(ngen,realntrl); % ntrl
+resp = zeros(ngen,realntrl);
+vabs = zeros(ngen,realntrl); % absolute chosen value
+vrel = zeros(ngen,realntrl); % relative chosen value
 % first trial
 qval(:,1) = 50;
 resp(:,1) = 1; % assume first response = 1
 % subsequent trials
-for itrl = 2:ntrl
+for itrl = 2:realntrl
     % if previous response = 1
     igen = resp(:,itrl-1) == 1;
     vabs(igen,itrl-1) = ps_all(igen,itrl-1);
@@ -267,11 +292,11 @@ vm = [pp;qq]; % mean bandit values
 vs = [ps;qs]; % sampled bandit values
 pos = [];
 pos_sub = kron([1,2],ones(1,8));
-nsub = ceil(ntrl/16);
+nsub = ceil(realntrl/16);
 for isub = 1:nsub
     while true
         pos_tmp = [pos,pos_sub(randperm(16))];
-        ntmp = min(numel(pos_tmp),ntrl);
+        ntmp = min(numel(pos_tmp),realntrl);
         i1 = sub2ind(size(vm),pos_tmp(1:ntmp),1:ntmp); % look-up indices for left bandit
         i2 = sub2ind(size(vm),3-pos_tmp(1:ntmp),1:ntmp); % look-up indices for right bandit
         if ...
@@ -283,8 +308,8 @@ for isub = 1:nsub
     end
     pos = pos_tmp;
 end
-blck.pos = pos(1:ntrl);
-
+blck.pos = pos(1:realntrl);
+toc
 %% supplementary functions
     function [paird] = meanpairdiff(x)
         % x is a 1 x n vector
@@ -299,5 +324,16 @@ blck.pos = pos(1:ntrl);
         paird = dd;
     end
 
-toc
+    function nrev = get_reversal(pp,qq)
+        
+        % check the number of reversals
+        nrev = 0;
+        for ii = 2:numel(pp)
+            if pp(ii-1) > qq(ii-1) && pp(ii) < qq(ii) || pp(ii-1) < qq(ii-1) && pp(ii) > qq(ii)
+                nrev = nrev + 1;
+            end
+        end
+    end
+
+
 end % function

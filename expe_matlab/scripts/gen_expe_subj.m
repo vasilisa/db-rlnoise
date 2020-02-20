@@ -24,9 +24,9 @@ expe = gen_expe_online(subj,generate_train);
 
 % save experiment structure
 if generate_train == 1
-    filename = sprintf('../Data/RLVARONLINE_training_expe.mat');
+    filename = sprintf('../Data_tausamp_2_truncated/RLVARONLINE_training_expe.mat');
 else
-    filename = sprintf('../Data/RLVARONLINE_S%02d_expe.mat',subj);
+    filename = sprintf('../Data_tausamp_2_truncated/RLVARONLINE_S%02d_expe.mat',subj);
 end
 
 save(filename,'expe','-v6');

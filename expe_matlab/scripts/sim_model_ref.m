@@ -52,7 +52,7 @@ for itrl = 2:ntrl
     % compute score from previous trial
     s_vs(itrl-1) = blck.vs(r,itrl-1)-blck.vs(3-r,itrl-1);
     s_vm(itrl-1) = blck.vm(r,itrl-1)-blck.vm(3-r,itrl-1);
-    check = check + (blck.vm(r,itrl-1)-blck.vm(3-r,itrl-1))/56
+    check = check + (blck.vm(r,itrl-1)-blck.vm(3-r,itrl-1))/56; 
 
     % update Q-value
     if blck.cfg.feedback == 1

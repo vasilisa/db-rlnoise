@@ -28,7 +28,7 @@ if generate_train == 1
     gen_expe_subj(subj,generate_train);
     
 elseif generate_train == 0
-    sublst = 1; % [2:30]; % 30
+    sublst = 21:100; 
     
     tic
     for subj = sublst

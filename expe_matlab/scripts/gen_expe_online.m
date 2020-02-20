@@ -27,6 +27,8 @@ function [expe] = gen_expe_online(subj,generate_train)
 %    * tau_samp - bandit sampling stability: same across all blocks set to 1.5
 %    * anticorr - bandit anti-correlation? (FALSE for all blocks)
 %    * feedback - bandit feedback (1: PARTIAL 2:COMPLETE chosen+unchosen COMPLETE FOR 1/2 BLOCKS)
+%    * COMPLETE block is repeated TWICE the same, so there is only 1
+%    complete feedback block generated.
 
 % All subjects start with the complete feedback training session. The order of the main sessions is randomizied as a function of subject number:
 % Odd subjects start with the complete feedback and the even - with the partial feedback block
@@ -59,7 +61,6 @@ if generate_train == 1
     
     expe = [];
     
-    
     % set bandit fluctuation parameters
     % defaults: epimin = 8, epimax = 32, tau_fluc = 3
     % this produces exponentially-distributed episodes of 16 trials on average
@@ -68,9 +69,9 @@ if generate_train == 1
     cfg_trn.epimax   = 24; % default 32  maximum episode length
     cfg_trn.tau_fluc = 3;  % bandit fluctuation stability (=volatility) it is the same for testing and training
     
-    cfg_trn.nepi     = 3;  % number of episodes
-    cfg_trn.ntrl     = 48; % number of trials
-    cfg_trn.realntrl = 48; % the number of actual trials to be used
+    cfg_trn.nepi     = 3;    % number of episodes
+    cfg_trn.ntrl     = 96; % number of trials
+    cfg_trn.realntrl = 48;   % the number of actual trials to be used
     
     cfg_trn.tau_samp = 3;  % bandit sampling stability: easier for the training blocks
     cfg_trn.anticorr = 0;  % uncorrelated blocks only
@@ -115,90 +116,147 @@ else
     % defaults: epimin = 8, epimax = 32, tau_fluc = 3
     % this produces exponentially-distributed episodes of 16 trials on average
     cfg          = [];
-    cfg.epimin   = 6;  % default 8 minimum episode length
-    cfg.epimax   = 24; % default 32  maximum episode length
+    cfg.epimin   = 8;  % default 8 minimum episode length
+    cfg.epimax   = 18; % default 32  maximum episode length
     cfg.tau_fluc = 3;  % bandit fluctuation stability (=volatility) it is the same for testing and training
-    cfg.nepi     = 4; % default 6
-    cfg.ntrl     = 56;
+    cfg.nepi     = 8; % default 6
     cfg.realntrl = 56;
-    cfg.tau_samp = 1.5;
+    cfg.ntrl     = 96;  % number of trials generated
+    cfg.tau_samp = 2.0; % original in fMRI study 1.5
     cfg.anticorr = 0; % uncorrelated only
+    cfg.pgen     = 0.005; % the default 
     
     %% Generate the TEST blocks
     % create the order of the test blocks for each subject:: based on the subject number : 1 = complete feedback , 0 = partial feedback
     f = mod(subj,2) == [1,0,1,0];
     nblck = length(f);
     
-    expe(2).meanmaxperf = 0;  
-    expe(2).meanchance  = 0;  
-    expe(2).meanwsls    = 0;  
+    nb_train                   = 2;
+    expe(nb_train).meanmaxperf = 0;
+    expe(nb_train).meanchance  = 0;
+    expe(nb_train).meanwsls    = 0;
     
     
-    for i = 1:4
+    for i = 1:4 % 2 partial feedback and 1 complete feedback blocks
         fprintf('GENERATING TEST BLOCK %d/4\n',i);
         
         % set condition for test block
         cfg.feedback = f(1,i)+1;
         
-        while true
-            blck = gen_blck_online(cfg);
-            
-            expe(i+2).cfg = cfg;
-            expe(i+2).type = 'test';
-            
-            expe(i+2).vm(1,:) = blck.pp(1:cfg.realntrl);
-            expe(i+2).vm(2,:) = blck.qq(1:cfg.realntrl);
-            % store bandit samples
-            expe(i+2).vs(1,:) = blck.ps(1:cfg.realntrl);
-            expe(i+2).vs(2,:) = blck.qs(1:cfg.realntrl);
-            
-            % store bandit positions : left and right
-            expe(i+2).pos = blck.pos;
-            
-            % check impact of 1st response
-            s_vm = [ ...
-                getfield(sim_model_ref(expe,i+2,1),'s_vm'), ...
-                getfield(sim_model_ref(expe,i+2,2),'s_vm')];
-            
-            s_vm_chance = [ ...
-                getfield(sim_model_ref(expe,i+2,1),'s_vm_chance'), ...
-                getfield(sim_model_ref(expe,i+2,2),'s_vm_chance')];
-            
-            s_vm_wsls = [ ...
-                getfield(sim_model_ref(expe,i+2,1),'s_vm_wsls'), ...
-                getfield(sim_model_ref(expe,i+2,2),'s_vm_wsls')];
-            
-           check = [ ...
-                getfield(sim_model_ref(expe,i+2,1),'check'), ...
-                getfield(sim_model_ref(expe,i+2,2),'check')];
-            
-            % Compute the reward that could be won per block if always
-            % choosing the most rewarding arm wih the learning rate 0.5: 
-            
-            if abs(diff(s_vm)/sum(s_vm)) < 0.05
-                
-                % Fill in the criterions for later evaluation of the
-                % performance: 
-                expe(i+2).maxperf   = mean(s_vm);        % average across 2 starting points: a relative reward that could be won  
-                expe(i+2).chance    = mean(s_vm_chance); % average reward with the random performance 
-                expe(i+2).wsls      = mean(s_vm_wsls);   % average reward with the WSLS performance 
-                expe(i+2).check     = mean(check);
-                break
+        % Check if the block already exists
+        if f(1,i) == 1 && i > 2 % complete feedback and not the first complete block
+            if f(1) == 1
+                orig_complete = 1+nb_train; % either the 3d one
+            else
+                orig_complete = 2+nb_train; % or the 4th block
             end
-        end
+            fprintf('Replicating the complete feedback block %d\n',orig_complete-nb_train);
+            % repeat the sequence:
+            expe(i+nb_train).cfg = expe(orig_complete).cfg;
+            expe(i+nb_train).vm  = expe(orig_complete).vm;
+            expe(i+nb_train).vs  = expe(orig_complete).vs;
+            expe(i+nb_train).type = 'test';
+            
+            % performance:
+            expe(i+nb_train).maxperf   = expe(orig_complete).maxperf;
+            expe(i+nb_train).chance    = expe(orig_complete).chance;
+            expe(i+nb_train).wsls      = expe(orig_complete).wsls;   % average reward with the WSLS performance
+            expe(i+nb_train).check     = expe(orig_complete).check;
+            
+            expe(i+nb_train).meanmaxperf = expe(orig_complete).meanmaxperf;
+            expe(i+nb_train).meanchance  = expe(orig_complete).meanchance;
+            expe(i+nb_train).meanwsls    = expe(orig_complete).meanwsls;
+            
+            % generate a new sequence of positions to make the blocks less
+            % similar:
+            tic
+            % generate bandit positions
+            fprintf('generating bandit positions...\n');
+            vm  = expe(orig_complete).vm; 
+            vs  = expe(orig_complete).vs; 
+            pos = [];
+            
+            pos_sub = kron([1,2],ones(1,8));
+            nsub = ceil(cfg.realntrl/16);
+            for isub = 1:nsub
+                while true
+                    pos_tmp = [pos,pos_sub(randperm(16))];
+                    ntmp = min(numel(pos_tmp),cfg.realntrl);
+                    i1 = sub2ind(size(vm),pos_tmp(1:ntmp),1:ntmp); % look-up indices for left bandit
+                    i2 = sub2ind(size(vm),3-pos_tmp(1:ntmp),1:ntmp); % look-up indices for right bandit
+                    if ...
+                            ~HasConsecutiveValues(pos_tmp,4) % bandit positions
+                        break
+                    end
+                end
+                pos = pos_tmp;
+            end
+            toc
+            expe(i+nb_train).pos = pos(1:cfg.realntrl);
+            
+        else
+            fprintf('GENERATING TEST BLOCK %d/4\n',i);
+            
+            while true
+                blck = gen_blck_online(cfg);
+                
+                expe(i+nb_train).cfg = cfg;
+                expe(i+nb_train).type = 'test';
+                
+                expe(i+nb_train).vm(1,:) = blck.pp(1:cfg.realntrl);
+                expe(i+nb_train).vm(2,:) = blck.qq(1:cfg.realntrl);
+                % store bandit samples
+                expe(i+nb_train).vs(1,:) = blck.ps(1:cfg.realntrl);
+                expe(i+nb_train).vs(2,:) = blck.qs(1:cfg.realntrl);
+                
+                % store bandit positions : left and right
+                expe(i+nb_train).pos = blck.pos;
+                
+                % check impact of 1st response
+                s_vm = [ ...
+                    getfield(sim_model_ref(expe,i+nb_train,1),'s_vm'), ...
+                    getfield(sim_model_ref(expe,i+nb_train,2),'s_vm')];
+                
+                s_vm_chance = [ ...
+                    getfield(sim_model_ref(expe,i+nb_train,1),'s_vm_chance'), ...
+                    getfield(sim_model_ref(expe,i+nb_train,2),'s_vm_chance')];
+                
+                s_vm_wsls = [ ...
+                    getfield(sim_model_ref(expe,i+nb_train,1),'s_vm_wsls'), ...
+                    getfield(sim_model_ref(expe,i+nb_train,2),'s_vm_wsls')];
+                
+                check = [ ...
+                    getfield(sim_model_ref(expe,i+nb_train,1),'check'), ...
+                    getfield(sim_model_ref(expe,i+nb_train,2),'check')];
+                
+                % Compute the reward that could be won per block if always
+                % choosing the most rewarding arm wih the learning rate 0.5:
+                
+                if abs(diff(s_vm)/sum(s_vm)) < 0.05
+                    
+                    % Fill in the criterions for later evaluation of the
+                    % performance:
+                    expe(i+nb_train).maxperf   = mean(s_vm);        % average across 2 starting points: a relative reward that could be won
+                    expe(i+nb_train).chance    = mean(s_vm_chance); % average reward with the random performance
+                    expe(i+nb_train).wsls      = mean(s_vm_wsls);   % average reward with the WSLS performance
+                    expe(i+nb_train).check     = mean(check);
+                    break
+                end
+            end % while
+            
+            % Compute a running average performance characterisitcs across all main test blocks
+            expe(i+nb_train).meanmaxperf = expe(i+nb_train).maxperf/4 + expe(i+nb_train-1).meanmaxperf;
+            expe(i+nb_train).meanchance  = expe(i+nb_train).chance/4  + expe(i+nb_train-1).meanchance;
+            expe(i+nb_train).meanwsls    = expe(i+nb_train).wsls/4    + expe(i+nb_train-1).meanwsls;
+            
+            fprintf('\n');
+            
+        end % feedback repetition loop
         
-        % Compute a running average performance characterisitcs across all main test blocks
-        expe(i+2).meanmaxperf = expe(i+2).maxperf/4 + expe(i+1).meanmaxperf; 
-        expe(i+2).meanchance  = expe(i+2).chance/4 + expe(i+1).meanchance; 
-        expe(i+2).meanwsls    = expe(i+2).wsls/4 + expe(i+1).meanwsls; 
-
-        fprintf('\n');
     end % block loop
     
     
 end % generate_train
-
-
 
 %% Generate pairs of shape/color combinations for the TEST ONLY, for the training they are identical for all users
 % shape = 0:circle, 1:diamond, 2:star,  3:plus
@@ -230,11 +288,16 @@ if generate_train == 0
     
 else
     for i = 1:2
-     expe(i).shape = NaN;
-     expe(i).color = NaN;
-end
-
-
-fprintf('\n');
-
+        expe(i).shape = NaN;
+        expe(i).color = NaN;
+    end
+    
+    
+    fprintf('\n');
+    
+    
+    %% Plot the four bandits: observed and theoretical rewards
+    
+    
+    
 end
