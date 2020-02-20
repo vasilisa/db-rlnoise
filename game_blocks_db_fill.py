@@ -40,11 +40,10 @@ table = db.Table('game_blocks', metadata, autoload=True, autoload_with=engine)
 #Inserting many records at ones
 query       = db.insert(table) 
 
-path        = os.path.join("/Users/vasilisaskvortsova/Documents/TASKVOL_ONLINE/task/prerequisites/expe_matlab/Data/")
-os.chdir(path)
+path        = os.path.join("./expe_matlab/Data_tausamp_2_truncated/")
 
 nbOfBlocks       = 6 # 2 training blocks and 4 test blocks 
-n_game           = 30 
+n_game           = 100 
 game_ids         = np.arange(1,n_game+1) 
 
 
@@ -74,15 +73,17 @@ for i_d in game_ids:
 
 			info['maxreward']     = 0.0
 			info['chance']        = 0.0
-			
 
+			info['block_feedback'] = fulldata['expe'][0][i_blck][0][0][0][8][0][0]
+		
 		else: 
 			info['block_type'] = 'testing'
 
 			info['maxreward']     = fulldata['expe'][0][i_blck][10][0][0] 
 			info['chance']        = fulldata['expe'][0][i_blck][11][0][0] 
 			
-		info['block_feedback'] = fulldata['expe'][0][i_blck][0][0][0][8][0][0]
+			info['block_feedback'] = fulldata['expe'][0][i_blck][0][0][0][9][0][0]
+		
 		info['reward_1']       = fulldata['expe'][0][i_blck][3][0]
 		info['reward_2']       = fulldata['expe'][0][i_blck][3][1]
 		info['position']       = fulldata['expe'][0][i_blck][4][0] 
